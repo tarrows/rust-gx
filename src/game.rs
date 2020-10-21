@@ -1,6 +1,7 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
+use sdl2::rect::Rect;
 use std::time::Duration;
 
 pub struct Game {
@@ -9,6 +10,9 @@ pub struct Game {
   canvas: sdl2::render::Canvas<sdl2::video::Window>,
   // ticks_count: u32,
   is_running: bool,
+
+  pos_paddle: Vector2,
+  pos_ball: Vector2,
 }
 
 pub struct Config {
@@ -16,7 +20,14 @@ pub struct Config {
   pub height: u32,
 }
 
-const TITLE: &str = "SDL";
+struct Vector2 {
+  x: f64,
+  y: f64,
+}
+
+const TITLE: &str = "Pong";
+const THICKNESS: u32 = 15;
+const PADDLE_HEIGHT: f64 = 100.0;
 
 impl Game {
   pub fn init(config: Config) -> Result<Game, String> {
@@ -28,11 +39,16 @@ impl Game {
       .build()
       .unwrap(); // TODO: use std::error::Error
 
-    let mut canvas = window.into_canvas().build().unwrap(); // TODO: use std::error::Error
+    let canvas = window.into_canvas().build().unwrap(); // TODO: use std::error::Error
 
-    canvas.set_draw_color(Color::RGB(255, 255, 255));
-    canvas.clear();
-    canvas.present();
+    let pos_paddle = Vector2 {
+      x: 10.0,
+      y: config.height as f64 / 2.0,
+    };
+    let pos_ball = Vector2 {
+      x: config.width as f64 / 2.0,
+      y: config.height as f64 / 2.0,
+    };
 
     println!("complete initialize...");
 
@@ -42,6 +58,9 @@ impl Game {
       canvas: canvas,
       // ticks_count: 0,
       is_running: true,
+
+      pos_paddle: pos_paddle,
+      pos_ball: pos_ball,
     };
 
     Ok(game)
@@ -76,7 +95,7 @@ impl Game {
             self.is_running = false;
             break 'running;
           }
-          _ => {}
+          _ => break 'running,
         }
       }
     }
@@ -85,6 +104,22 @@ impl Game {
   fn update(&self) {}
 
   fn generate_output(&mut self) {
+    self.canvas.set_draw_color(Color::RGB(0, 0, 255));
+    self.canvas.clear();
+
+    // draw paddle
+    self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+
+    let paddle_x = (self.pos_paddle.x - THICKNESS as f64 / 2.0).trunc() as i32;
+    let paddle_y = (self.pos_paddle.y - PADDLE_HEIGHT / 2.0).trunc() as i32;
+    let paddle = Rect::new(paddle_x, paddle_y, THICKNESS, PADDLE_HEIGHT as u32);
+    self.canvas.fill_rect(paddle).unwrap(); // TODO: switch to Result<T, E>
+
+    let ball_x = (self.pos_ball.x - THICKNESS as f64 / 2.0).trunc() as i32;
+    let ball_y = (self.pos_ball.y - THICKNESS as f64 / 2.0).trunc() as i32;
+    let ball = Rect::new(ball_x, ball_y, THICKNESS, THICKNESS);
+    self.canvas.fill_rect(ball).unwrap(); // TODO: switch to Result<T, E>
+
     self.canvas.present();
   }
 }
