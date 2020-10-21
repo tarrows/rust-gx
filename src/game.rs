@@ -7,8 +7,9 @@ use std::time::Duration;
 pub struct Game {
   context: sdl2::Sdl,
   // window: sdl2::video::Window,
+  timer: sdl2::TimerSubsystem, // TODO: Consider to use time crate or else as recommended in TimerSubsystem
   canvas: sdl2::render::Canvas<sdl2::video::Window>,
-  // ticks_count: u32,
+  ticks_count: u32,
   is_running: bool,
 
   pos_paddle: Vector2,
@@ -32,6 +33,7 @@ const PADDLE_HEIGHT: f64 = 100.0;
 impl Game {
   pub fn init(config: Config) -> Result<Game, String> {
     let context = sdl2::init()?;
+    let timer = context.timer()?;
     let video = context.video()?;
     let window = video
       .window(TITLE, config.width, config.height)
@@ -55,8 +57,9 @@ impl Game {
     let game = Game {
       context: context,
       // window: window,
+      timer: timer,
       canvas: canvas,
-      // ticks_count: 0,
+      ticks_count: 0,
       is_running: true,
 
       pos_paddle: pos_paddle,
@@ -84,6 +87,7 @@ impl Game {
   fn process_input(&mut self) {
     let mut event_pump = self.context.event_pump().unwrap();
 
+    // TODO: Move loop to "run_loop"
     'running: loop {
       for event in event_pump.poll_iter() {
         match event {
@@ -101,7 +105,12 @@ impl Game {
     }
   }
 
-  fn update(&self) {}
+  fn update(&mut self) {
+    // TODO: SDL_TICKS_PASSED seems not exists on rust-sdl2
+    let current = self.timer.ticks();
+    let delta_time = (current - self.ticks_count) as f64 / 1000.0;
+    self.ticks_count = current;
+  }
 
   fn generate_output(&mut self) {
     self.canvas.set_draw_color(Color::RGB(0, 0, 255));
