@@ -12,8 +12,19 @@ pub struct Game {
   ticks_count: u32,
   is_running: bool,
 
+  #[allow(dead_code)] // ...but maybe finally unnecessary
+  window_width: u32,
+  window_height: u32,
+  dir_paddle: PaddleDirection,
   pos_paddle: Vector2,
   pos_ball: Vector2,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+enum PaddleDirection {
+  Stop = 0,
+  Up = -1,
+  Down = 1,
 }
 
 pub struct Config {
@@ -62,6 +73,9 @@ impl Game {
       ticks_count: 0,
       is_running: true,
 
+      window_width: config.width,
+      window_height: config.height,
+      dir_paddle: PaddleDirection::Stop,
       pos_paddle: pos_paddle,
       pos_ball: pos_ball,
     };
@@ -90,6 +104,8 @@ impl Game {
     // TODO: Move loop to "run_loop"
     'running: loop {
       for event in event_pump.poll_iter() {
+        self.dir_paddle = PaddleDirection::Stop;
+
         match event {
           Event::Quit { .. }
           | Event::KeyDown {
@@ -99,6 +115,22 @@ impl Game {
             self.is_running = false;
             break 'running;
           }
+          Event::KeyDown {
+            keycode: Some(Keycode::W),
+            ..
+          } => {
+            // println!("Up");
+            self.dir_paddle = PaddleDirection::Up;
+            break 'running;
+          }
+          Event::KeyDown {
+            keycode: Some(Keycode::S),
+            ..
+          } => {
+            // println!("Down");
+            self.dir_paddle = PaddleDirection::Down;
+            break 'running;
+          }
           _ => break 'running,
         }
       }
@@ -106,10 +138,37 @@ impl Game {
   }
 
   fn update(&mut self) {
-    // TODO: SDL_TICKS_PASSED seems not exists on rust-sdl2
+    // SDL_TICKS_PASSED seems not exists on rust-sdl2
+    // substitute https://github.com/emscripten-ports/SDL2/blob/master/include/SDL_timer.h
+    while self.ticks_count + 16 > self.timer.ticks() {
+      // println!("{} < {}", self.ticks_count, self.timer.ticks());
+      ::std::thread::sleep(Duration::new(0, 1000000)); // wait 1ms
+    }
+    // self.ticks_count + 16 - self.timer.ticks() <= 0 -> panicked at 'attempt to subtract with overflow'
+    // self.ticks_count.saturating_add(16).saturating_sub(self.timer.ticks()) <= 0 -> never breaks
+
     let current = self.timer.ticks();
     let delta_time = (current - self.ticks_count) as f64 / 1000.0;
+    let delta_time = f64::min(delta_time, 0.05);
+    // println!("delta: {}", delta_time);
     self.ticks_count = current;
+
+    // TODO: Remove this if statement (maybe unnecessary)
+    if self.dir_paddle != PaddleDirection::Stop {
+      let paddle_speed = 300.0;
+      let paddle_delta = (self.dir_paddle as i32 as f64) * paddle_speed * delta_time;
+      self.pos_paddle.y += paddle_delta;
+      // println!("paddleY: {} ({})", self.pos_paddle.y, paddle_delta);
+
+      // Make sure paddle does not move off screen!
+      // TODO: move these bounds to game object's field
+      let lower_bound = PADDLE_HEIGHT / 2.0 + THICKNESS as f64;
+      let upper_bound = self.window_height as f64 - PADDLE_HEIGHT / 2.0 - THICKNESS as f64;
+
+      // println!("(bounded)paddleY: {} < {} < {}", lower_bound, self.pos_paddle.y, upper_bound);
+
+      self.pos_paddle.y = self.pos_paddle.y.min(upper_bound).max(lower_bound);
+    }
   }
 
   fn generate_output(&mut self) {
