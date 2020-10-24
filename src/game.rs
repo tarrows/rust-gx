@@ -18,6 +18,7 @@ pub struct Game {
   dir_paddle: PaddleDirection,
   pos_paddle: Vector2,
   pos_ball: Vector2,
+  vel_ball: Vector2, // Velocity
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -78,6 +79,10 @@ impl Game {
       dir_paddle: PaddleDirection::Stop,
       pos_paddle: pos_paddle,
       pos_ball: pos_ball,
+      vel_ball: Vector2 {
+        x: -200.0,
+        y: 235.0,
+      },
     };
 
     Ok(game)
@@ -169,6 +174,12 @@ impl Game {
 
       self.pos_paddle.y = self.pos_paddle.y.min(upper_bound).max(lower_bound);
     }
+
+    // Update Ball
+    self.pos_ball.x += self.vel_ball.x * delta_time;
+    self.pos_ball.y += self.vel_ball.y * delta_time;
+
+    // TODO: Bounce the Ball
   }
 
   fn generate_output(&mut self) {
