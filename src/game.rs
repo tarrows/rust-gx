@@ -5,17 +5,21 @@ use sdl2::rect::Rect;
 use std::time::Duration;
 
 pub struct Game {
+  // SDL2 context items
   // context: sdl2::Sdl,
   // window: sdl2::video::Window,
   timer: sdl2::TimerSubsystem, // TODO: Consider to use time crate or else as recommended in TimerSubsystem
   events: sdl2::EventPump,
   canvas: sdl2::render::Canvas<sdl2::video::Window>,
+  // Global state
   ticks_count: u32,
   is_running: bool,
 
   #[allow(dead_code)] // ...but maybe finally unnecessary
   window_width: u32,
   window_height: u32,
+
+  // Each object's state
   dir_paddle: PaddleDirection,
   pos_paddle: Vector2,
   pos_ball: Vector2,
@@ -180,6 +184,7 @@ impl Game {
 
       // println!("(bounded)paddleY: {} < {} < {}", lower_bound, self.pos_paddle.y, upper_bound);
 
+      // ref. https://doc.rust-lang.org/std/primitive.f64.html#method.clamp
       self.pos_paddle.y = self.pos_paddle.y.min(upper_bound).max(lower_bound);
     }
 
@@ -187,7 +192,35 @@ impl Game {
     self.pos_ball.x += self.vel_ball.x * delta_time;
     self.pos_ball.y += self.vel_ball.y * delta_time;
 
-    // TODO: Bounce the Ball
+    // If the ball go off the screen, end the game
+    if self.pos_ball.x <= 0.0 {
+      self.is_running = false;
+    }
+
+    // Bounce the Ball
+    let diff = (self.pos_paddle.y - self.pos_ball.y).abs();
+    let close_enough = diff <= PADDLE_HEIGHT / 2.0;
+    let collect_x_position = self.pos_ball.x <= 25.0 && 20.0 <= self.pos_ball.x;
+    let moving_to_left = self.vel_ball.x < 0.0;
+
+    if close_enough && collect_x_position && moving_to_left {
+      self.vel_ball.x *= -1.0
+    }
+
+    // Did the ball collide with the right wall?
+    if self.pos_ball.x >= 1024.0 - THICKNESS as f64 && self.vel_ball.x > 0.0 {
+      self.vel_ball.x *= -1.0
+    }
+
+    // Did the ball collide with the top wall?
+    if self.pos_ball.y <= THICKNESS as f64 && self.vel_ball.y < 0.0 {
+      self.vel_ball.y *= -1.0
+    }
+
+    // Did the ball collide with the bottom wall?
+    if self.pos_ball.y >= (768 - THICKNESS).into() && self.vel_ball.y > 0.0 {
+      self.vel_ball.y *= -1.0
+    }
   }
 
   fn generate_output(&mut self) {
