@@ -2,6 +2,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
+use std::convert::TryInto;
 use std::time::Duration;
 
 pub struct Game {
@@ -15,7 +16,6 @@ pub struct Game {
   ticks_count: u32,
   is_running: bool,
 
-  #[allow(dead_code)] // ...but maybe finally unnecessary
   window_width: u32,
   window_height: u32,
 
@@ -227,9 +227,21 @@ impl Game {
     self.canvas.set_draw_color(Color::RGB(0, 0, 255));
     self.canvas.clear();
 
+    // draw walls
+    self.canvas.set_draw_color(Color::RGB(0, 255, 0));
+
+    let bottom_wall_y = (self.window_height - THICKNESS).try_into().unwrap();
+    let right_wall_x = (self.window_width - THICKNESS).try_into().unwrap();
+
+    let top_wall = Rect::new(0, 0, self.window_width, THICKNESS);
+    let bottom_wall = Rect::new(0, bottom_wall_y, self.window_width, THICKNESS);
+    let right_wall = Rect::new(right_wall_x, 0, THICKNESS, self.window_height);
+    let walls = [top_wall, bottom_wall, right_wall];
+
+    self.canvas.fill_rects(&walls).unwrap();
+
     // draw paddle
     self.canvas.set_draw_color(Color::RGB(255, 255, 255));
-
     let paddle_x = (self.pos_paddle.x - THICKNESS as f64 / 2.0).trunc() as i32;
     let paddle_y = (self.pos_paddle.y - PADDLE_HEIGHT / 2.0).trunc() as i32;
     let paddle = Rect::new(paddle_x, paddle_y, THICKNESS, PADDLE_HEIGHT as u32);
