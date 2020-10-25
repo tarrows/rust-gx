@@ -42,13 +42,38 @@ struct Vector2 {
   y: f64,
 }
 
+#[derive(Debug)]
+pub enum MyError {
+  SDL2WindowBuildError(sdl2::video::WindowBuildError),
+  NumTryFromIntError(std::num::TryFromIntError),
+  OtherError(String),
+}
+
+impl From<std::num::TryFromIntError> for MyError {
+  fn from(err: std::num::TryFromIntError) -> MyError {
+    MyError::NumTryFromIntError(err)
+  }
+}
+
+impl From<String> for MyError {
+  fn from(err: String) -> MyError {
+    MyError::OtherError(err)
+  }
+}
+
+impl From<sdl2::video::WindowBuildError> for MyError {
+  fn from(err: sdl2::video::WindowBuildError) -> MyError {
+    MyError::SDL2WindowBuildError(err)
+  }
+}
+
 const TITLE: &str = "Pong";
 const THICKNESS: u32 = 15;
 const PADDLE_HEIGHT: f64 = 100.0;
 const PADDLE_SPEED: f64 = 300.0;
 
 impl Game {
-  pub fn init(config: Config) -> Result<Game, String> {
+  pub fn init(config: Config) -> Result<Game, MyError> {
     let context = sdl2::init()?;
     let timer = context.timer()?;
     let events = context.event_pump()?;
@@ -56,10 +81,10 @@ impl Game {
     let window = video
       .window(TITLE, config.width, config.height)
       .position_centered()
-      .build()
-      .unwrap(); // TODO: use std::error::Error
+      .build()?;
 
-    let canvas = window.into_canvas().build().unwrap(); // TODO: use std::error::Error
+    // sdl2::video::IntegerOrSdlError is private
+    let canvas = window.into_canvas().build().unwrap();
 
     let pos_paddle = Vector2 {
       x: 10.0,
@@ -99,7 +124,7 @@ impl Game {
       self.dir_paddle = PaddleDirection::Stop;
       self.process_input();
       self.update();
-      self.generate_output();
+      self.generate_output().unwrap();
       // 60fps
       ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
@@ -200,35 +225,37 @@ impl Game {
     }
   }
 
-  fn generate_output(&mut self) {
+  fn generate_output(&mut self) -> Result<(), MyError> {
     self.canvas.set_draw_color(Color::RGB(0, 0, 255));
     self.canvas.clear();
 
     // draw walls
     self.canvas.set_draw_color(Color::RGB(0, 255, 0));
 
-    let bottom_wall_y = (self.window_height - THICKNESS).try_into().unwrap();
-    let right_wall_x = (self.window_width - THICKNESS).try_into().unwrap();
+    let bottom_wall_y = (self.window_height - THICKNESS).try_into()?;
+    let right_wall_x = (self.window_width - THICKNESS).try_into()?;
 
     let top_wall = Rect::new(0, 0, self.window_width, THICKNESS);
     let bottom_wall = Rect::new(0, bottom_wall_y, self.window_width, THICKNESS);
     let right_wall = Rect::new(right_wall_x, 0, THICKNESS, self.window_height);
     let walls = [top_wall, bottom_wall, right_wall];
 
-    self.canvas.fill_rects(&walls).unwrap();
+    self.canvas.fill_rects(&walls)?;
 
     // draw paddle
     self.canvas.set_draw_color(Color::RGB(255, 255, 255));
     let paddle_x = (self.pos_paddle.x - THICKNESS as f64 / 2.0).trunc() as i32;
     let paddle_y = (self.pos_paddle.y - PADDLE_HEIGHT / 2.0).trunc() as i32;
     let paddle = Rect::new(paddle_x, paddle_y, THICKNESS, PADDLE_HEIGHT as u32);
-    self.canvas.fill_rect(paddle).unwrap(); // TODO: switch to Result<T, E>
+    self.canvas.fill_rect(paddle)?; // TODO: switch to Result<T, E>
 
     let ball_x = (self.pos_ball.x - THICKNESS as f64 / 2.0).trunc() as i32;
     let ball_y = (self.pos_ball.y - THICKNESS as f64 / 2.0).trunc() as i32;
     let ball = Rect::new(ball_x, ball_y, THICKNESS, THICKNESS);
-    self.canvas.fill_rect(ball).unwrap(); // TODO: switch to Result<T, E>
+    self.canvas.fill_rect(ball)?; // TODO: switch to Result<T, E>
 
     self.canvas.present();
+
+    Ok(())
   }
 }
