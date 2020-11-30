@@ -1,12 +1,17 @@
-mod game;
-use game::{Config, Game};
+mod opt;
+mod pong;
+use opt::Opt;
+use pong::{Config, Game};
+use structopt::StructOpt;
 
 fn main() {
+  let opt = Opt::from_args();
+  println!("{:#?}", opt);
   let config = Config {
     width: 1024,
     height: 768,
   };
-  let mut game = Game::init(config).unwrap();
-  game.run_loop();
-  game.shutdown();
+  let mut pong = Game::init(config).unwrap();
+  pong.run_loop();
+  pong.shutdown();
 }
