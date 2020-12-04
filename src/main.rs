@@ -1,6 +1,6 @@
 mod opt;
 mod pong;
-use opt::Opt;
+use opt::{GameTitle, Opt};
 use pong::{Config, Game};
 use structopt::StructOpt;
 
@@ -11,7 +11,11 @@ fn main() {
     width: 1024,
     height: 768,
   };
-  let mut pong = Game::init(config).unwrap();
-  pong.run_loop();
-  pong.shutdown();
+  match opt.title {
+    GameTitle::Pong => {
+      let mut pong = Game::init(config).unwrap();
+      pong.run_loop();
+      pong.shutdown();
+    }
+  }
 }
